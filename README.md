@@ -1,0 +1,4 @@
+cropper
+=======
+
+jQuery crop widget
