@@ -24,7 +24,7 @@
         crop: true,
         loaded: false,
 
-        loadFile: function (file) {
+        loadImage: function (file) {
             var that = this,
                 thisFile,
                 reader;
@@ -74,14 +74,8 @@
             this._calcPreviewSize();
             this._setMargin();
 
-            this.element.addClass("sjaakp-cropper sjaakp-spos-" + this.options.sliderPosition)
-                .append(this.preview);
-            if (this.options.sliderPosition === "top" || this.options.sliderPosition === "left")    {
-                this.element.prepend(this.slider);
-            }
-            else    {
-                this.element.append(this.slider);
-            }
+            this.element.append(this.preview);
+            this._positionSlider();
 
             this._on(this.slider, {
                 slide: function (evt, ui) {
@@ -132,6 +126,7 @@
                 this._update();
                 if (key === "margin") { this._setMargin(); }
                 else if (key === "aspectRatio" && this.loaded) { this._centerImage(); }
+                else if (key === "sliderPosition") { this._positionSlider(); }
             }
             if (this.loaded) { this._report(); }
         },
@@ -193,8 +188,7 @@
                 height: h
             };
             this.preview.css(this.previewSize);     // set preview size
-            if (this.slider.slider("option", "orientation") === "horizontal") { this.slider.width(w); }
-            else { this.slider.height(h); }
+            this._sizeSlider();
         },
 
         // Calculate base scale for the image: the smallest scale where the image fits the crop area.
@@ -241,6 +235,30 @@
             }
             if (zoomMax > 1) { this.slider.slider("option", "max", zoomMax).slider("enable"); }
             else { this._reset(); }
+        },
+
+        _positionSlider: function() {
+            var pos = this.options.sliderPosition;
+            this.slider.slider("option", "orientation", pos === "top" || pos === "bottom" ? "horizontal" : "vertical");
+            this.element.attr("class", "sjaakp-cropper sjaakp-spos-" + this.options.sliderPosition);
+            if (pos === "top" || pos === "left")    {
+                this.element.prepend(this.slider);
+            }
+            else    {
+                this.element.append(this.slider);
+            }
+            this._sizeSlider();
+        },
+
+        _sizeSlider: function() {
+            var pos = this.options.sliderPosition;
+            if (pos === "top" || pos === "bottom")  {
+                this.slider.width(this.preview.width()).height("");
+            }
+            else    {
+                this.slider.height(this.preview.height()).width("")
+                    .find("a").css( {left: "" });   // hack to solve position problem in slider handle
+            }
         },
 
         // Set margin. Implemented as border of overlay.
