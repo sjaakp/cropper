@@ -17,7 +17,7 @@ Of the jQuery.ui library, only the slider widget is used. Therefore, only the fo
 
 ## Usage ##
 
-### Load resources ###
+#### Load resources ####
 
 In the `header` part of the HTML-page, link to the style sheets (`.css`) of jQuery.ui and of **Cropper**, like:
 
@@ -33,7 +33,7 @@ And load the **Cropper** code:
 
     <script src="js/jquery.cropper.js"></script>
  
-### Set-up ###
+#### Set-up ####
 
 **Cropper** is loaded like most other jQuery.ui widgets. The code might look something like:
 
@@ -82,33 +82,33 @@ To read an option:
 
 The options have immediate effect after they have been set, so changes are in real time.
 
-### aspectRatio ###
+#### aspectRatio ####
 
 A float describing the dimensions of the cropped area, i.e. width / height. A square cropped area will have `aspectRatio: 1`, while a portrait layout may have `aspectRatio: .75`, and a landscape layout `aspectRatio: 1.5`. Default is 1.
 
-### margin ###
+#### margin ####
 
 The width of **Cropper**'s area margin, in pixels. Default is 40.
 
-### diagonal ###
+#### diagonal ####
 
 The diagonal of the cropping area, in pixels. If `aspectRatio` changes, both width and height of the cropping area change, but the diagonal is constant. Default: 300.
 
-### minSize ###
+#### minSize ####
 
 The minimal size of the cropped area in pixels. The size is the length of the greatest side, so for a portrait layout it will be the height. If an image is too small, it will not be cropped. Default: 240.
 
-### sliderPosition ###
+#### sliderPosition ####
 
 Position of the slider with respect to the preview area. Possible values: `"top"`, `"bottom"`, `"left"`, `"right"`. Default is `"bottom"`.
 
-### change ###
+#### change ####
 
 The handler of the `change` event. See below.
 
 ## Events ##
 
-### change ###
+#### change ####
 
 Whenever something changes, **Cropper** fires the `change` event. This can be used to update other elements on the page, f.i. hidden inputs. 
 
