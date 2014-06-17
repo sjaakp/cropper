@@ -32,8 +32,17 @@
     /* do not change these */
     position: absolute;
     left: 0;
-    right: 0;
+    top: 0;
     cursor: not-allowed;
+}
+
+.sjaakp-state-nocrop .sjaakp-img    {
+    /* do not change these */
+    max-width: 90%;
+    max-height: 90%;
+    right: 0;
+    bottom: 0;
+    margin: auto;
 }
 
 .sjaakp-overlay {

@@ -74,7 +74,7 @@
             this._calcPreviewSize();
             this._setMargin();
 
-            this.element.append(this.preview);
+            this.element.addClass("sjaakp-cropper").append(this.preview);
             this._positionSlider();
 
             this._on(this.slider, {
@@ -211,13 +211,15 @@
 
         // Set img size
         _setImgSize: function ()    {
-            var f = this.scale * this.zoom;
-            this.imgSize = {
-                width: f * this.nativeSize.width,
-                height: f * this.nativeSize.height
-            };
-            this.img.css(this.imgSize);
-            this._setImgPosition(this.img.position());      // ensure img is constrained
+            if (this.crop)  {
+                var f = this.scale * this.zoom;
+                this.imgSize = {
+                    width: f * this.nativeSize.width,
+                    height: f * this.nativeSize.height
+                };
+                this.img.css(this.imgSize);
+                this._setImgPosition(this.img.position());      // ensure img is constrained
+            }
         },
 
         _setSlider: function ()  {
@@ -240,7 +242,8 @@
         _positionSlider: function() {
             var pos = this.options.sliderPosition;
             this.slider.slider("option", "orientation", pos === "top" || pos === "bottom" ? "horizontal" : "vertical");
-            this.element.attr("class", "sjaakp-cropper sjaakp-spos-" + this.options.sliderPosition);
+            this.element.removeClass("sjaakp-spos-top sjaakp-spos-bottom sjaakp-spos-left sjaakp-spos-right")
+                .addClass("sjaakp-spos-" + this.options.sliderPosition);
             if (pos === "top" || pos === "left")    {
                 this.element.prepend(this.slider);
             }
@@ -268,11 +271,13 @@
 
         // Set img position, constraining it to the crop area.
         _setImgPosition: function (pos)  {
-            var m = this.options.margin;
-            this.img.css({
-                left: Math.max(Math.min(pos.left, m), this.previewSize.width - this.imgSize.width - m),
-                top: Math.max(Math.min(pos.top, m), this.previewSize.height - this.imgSize.height - m)
-            });
+            if (this.crop)  {
+                var m = this.options.margin;
+                this.img.css({
+                    left: Math.max(Math.min(pos.left, m), this.previewSize.width - this.imgSize.width - m),
+                    top: Math.max(Math.min(pos.top, m), this.previewSize.height - this.imgSize.height - m)
+                });
+            }
         },
 
         // Change zoom. Center point of crop area remains the same.
@@ -295,10 +300,12 @@
         },
 
         _centerImage: function ()    {
-            this.img.css({
-                left: (this.previewSize.width - this.imgSize.width) / 2,
-                top: (this.previewSize.height - this.imgSize.height) / 2
-            });
+            if (this.crop)  {
+                this.img.css({
+                    left: (this.previewSize.width - this.imgSize.width) / 2,
+                    top: (this.previewSize.height - this.imgSize.height) / 2
+                });
+            }
         },
 
         _report: function () {
