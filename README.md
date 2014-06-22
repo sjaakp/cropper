@@ -1,6 +1,6 @@
 # Cropper #
 
-**Cropper** is a jQuery widget to add cropping by zoom and pan to any application. It should work in any modern browser.
+**Cropper** is a jQuery widget to add cropping by zoom and pan to any application. The cropping area is set by dragging the image 'under' the widget, and zooming with a slider. **Cropper** should work in any modern browser.
 
 ## Dependencies ##
 
@@ -96,7 +96,7 @@ The diagonal of the cropping area, in pixels. If `aspectRatio` changes, both wid
 
 #### minSize ####
 
-The minimal size of the cropped area in pixels. The size is the length of the greatest side, so for a portrait layout it will be the height. If an image is too small, it will not be cropped. Default: 240.
+The minimal size of the cropped area in pixels. The size is the length of the greatest side, so for a portrait layout it will be the height. If an image is too small, it will not be cropped. `minSize` also determines the maximum zoom factor of the image. Default: 240.
 
 #### sliderPosition ####
 

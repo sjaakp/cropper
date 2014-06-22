@@ -1,4 +1,4 @@
-/*global File, FileList, FileReader, Image, Math, jQuery */
+/*global File, FileList, FileReader, Image, Math, jQuery, console */
 /*jslint nomen: true, unparam: true, white: true */
 /**
  * MIT licence
@@ -14,13 +14,13 @@
             margin: 40,
             diagonal: 300,
             minSize: 240,
-            zoomMax: 3,
             sliderPosition: "bottom",
             sliderOptions: {}
         },
 
         scale: 1,
         zoom: 1,
+        margin: 40,
         crop: true,
         loaded: false,
 
@@ -29,14 +29,31 @@
                 thisFile,
                 reader;
 
+            // restore defaults
+            this.scale = this.zoom =  1; //this.scaleMax = 1;
+            this.margin = this.options.margin;
             this.crop = true;
-            this.overlay.show();
             this.loaded = false;
+
+            // restore ui
+            this._setMargin();
+            this.overlay.show();
             this.preview.removeClass("sjaakp-state-loaded sjaakp-state-nocrop");
+            this.img.removeAttr("style");   // remove leftovers previous image
+            this.slider.slider("option", {
+                value: 1,
+                max: 1
+            });
+
+            // empty img
+            this.img.removeAttr("src");
+
+            this._reportNull();
+
             if (!file) {
-                this._empty();
-                return;
+                return; // empty
             }
+
             if (file instanceof FileList) { thisFile = file[0]; }
             else if (file instanceof File) { thisFile = file; }
             else {
@@ -44,18 +61,16 @@
                 return;
             }
 
-            if (thisFile.type.match(/image.*/))  {
+            if (thisFile.type.match(/image.*/))  {  // Lint generates message, ignore
                 reader = new FileReader();
                 reader.onload = function (evt) {
                     that._loadSrc(evt.target.result);
                 };
                 reader.readAsDataURL(thisFile);
             }
-            else { this._empty(); }
         },
 
         _create: function () {
-
             this.img = $('<img>').addClass("sjaakp-img");
             this.overlay = $("<div>").addClass("sjaakp-overlay");
 
@@ -64,22 +79,24 @@
 
             this.slider = $("<div>").addClass("sjaakp-slider")
                 .slider($.extend({}, this.options.sliderOptions, {  // don't let user override our options
-                    disabled: true,
                     min: 1,
-                    max: this.options.zoomMax,
-                    step: 0.01,
-                    orientation: this.options.sliderPosition === "top" || this.options.sliderPosition === "bottom" ?
-                        "horizontal" : "vertical"
+                    max: 1
                 }));
             this._calcPreviewSize();
+            this.margin = this.options.margin;
             this._setMargin();
 
             this.element.addClass("sjaakp-cropper").append(this.preview);
             this._positionSlider();
+            this._reportNull();
 
             this._on(this.slider, {
                 slide: function (evt, ui) {
                     this._changeZoom(ui.value);
+                },
+                dblclick: function(evt) {
+                    this.slider.slider("option", "value", 1);
+                    this._changeZoom(1);
                 }
             });
 
@@ -91,13 +108,13 @@
                             left: evt.pageX,
                             top: evt.pageY
                             },
-                            startPos = this.img.position();     // this = widget
+                            startPos = this.imgPos;     // this = widget
                         dragging = true;
 
                         this._on(this.document, {
                             mousemove: function (evt) {
                                 if (dragging) {
-                                    this._setImgPosition({
+                                    this._moveImg({
                                         left: startPos.left + evt.pageX - d.left,
                                         top: startPos.top + evt.pageY - d.top
                                     });
@@ -122,24 +139,37 @@
 
         _setOption: function (key, value)    {
             this._super(key, value);
-            if (key !== "sliderOptions") {
-                this._update();
-                if (key === "margin") { this._setMargin(); }
-                else if (key === "aspectRatio" && this.loaded) { this._centerImage(); }
-                else if (key === "sliderPosition") { this._positionSlider(); }
+            switch(key) {
+                case "aspectRatio":
+                    this._calcPreviewSize();
+                    this._calcScale();
+                    this._centerImg();
+                    this._report();     // report new aspect ratio
+                    break;
+
+                case "margin":
+                    this.margin = Number(value);    // set current margin to option value
+                    this._calcPreviewSize();
+                    this._calcScale();    // scale doesn't change; current margin might!
+                    this._setMargin();
+                    this._moveImg(this.imgPos);     // ensure img is contained
+                    break;
+
+                case "diagonal":
+                    this._calcPreviewSize();
+                    this._calcScale();
+                    break;
+
+                case "sliderPosition":
+                    this._positionSlider();
+                    break;
+
+                case "minSize":
+                    this._calcScale();
+
+                default:
+                    break;
             }
-            if (this.loaded) { this._report(); }
-        },
-
-        _empty: function ()  {
-            this.img.removeAttr("src");
-            this._reportNull();
-            this._reset();
-        },
-
-        _reset: function ()  {
-            this.zoom = this.scale = 1;
-            this.slider.slider("option", "value", 1).slider("disable");
         },
 
         _loadSrc: function (src)  {
@@ -155,23 +185,14 @@
                 };
 
                 that.img.attr("src", this.src);
-                that.zoom = 1;
                 that.loaded = true;
-                that.slider.slider("option", "value", 1);
-                that._update();
-                that._centerImage();
                 that.preview.addClass("sjaakp-state-loaded");
+                that._calcScale();
+                if (that.crop) {
+                    that._centerImg();     // center image
+                }
                 that._report();
             };
-        },
-
-        _update: function () {
-            this._calcPreviewSize();
-            if (this.loaded)    {
-                this._calcScale();
-                this._setImgSize();
-                this._setSlider();
-            }
         },
 
         // Calculate and set preview size based on aspect ratio, margin and diagonal.
@@ -193,50 +214,55 @@
 
         // Calculate base scale for the image: the smallest scale where the image fits the crop area.
         _calcScale: function ()  {
-            var cropWidth = this.previewSize.width - 2 * this.options.margin,
-                cropHeight = this.previewSize.height - 2 * this.options.margin,
-                scale =  Math.max(cropWidth / this.nativeSize.width, cropHeight / this.nativeSize.height);
+            if (this.loaded)    {
+                var cropWidth = this.previewSize.width - 2 * this.margin,
+                    cropHeight = this.previewSize.height - 2 * this.margin,
+                    scaleHor = cropWidth / this.nativeSize.width,
+                    scaleVert = cropHeight / this.nativeSize.height,
+                    scale =  Math.max(scaleHor, scaleVert),
+                    scaleMax,
+                    maxZoom;
 
-            if (scale > 1)  {
-                scale = 1;
-                this.overlay.hide();
-                this.preview.addClass("sjaakp-state-nocrop");
-                this._reset();
-                this.crop = false;
-                this._reportNull();
+                if (scale >= 1)  {
+                    scale = 1;
+                    this.margin = Math.max(this.previewSize.width - this.nativeSize.width, this.previewSize.height - this.nativeSize.height) / 2;
+                    this._setMargin();
+                }
+
+                scaleMax = Math.max(cropWidth, cropHeight) / this.options.minSize;
+                this.scale = scale;
+
+                if (scaleMax < scale)  {
+                    this.overlay.hide();
+                    this.preview.addClass("sjaakp-state-nocrop");
+                    this.crop = false;
+                    this._reportNull();
+                }
+                else    {
+                    maxZoom = scaleMax / scale;
+                    if (maxZoom < this.zoom)    {
+                        this._changeZoom(maxZoom);
+                    }
+                    this.slider.slider("option", {
+                        max: maxZoom,
+                        step: maxZoom / 100
+                    });
+                }
+                this._setImgSize();
             }
-
-            this.scale = scale;
+            else { this.scale = 1; }
         },
 
         // Set img size
         _setImgSize: function ()    {
-            if (this.crop)  {
-                var f = this.scale * this.zoom;
-                this.imgSize = {
-                    width: f * this.nativeSize.width,
-                    height: f * this.nativeSize.height
-                };
+            var f = this.scale * this.zoom;
+            this.imgSize = {
+                width: f * this.nativeSize.width,
+                height: f * this.nativeSize.height
+            };
+            if (this.crop) {
                 this.img.css(this.imgSize);
-                this._setImgPosition(this.img.position());      // ensure img is constrained
             }
-        },
-
-        _setSlider: function ()  {
-            var zoomMax = this.options.zoomMax,
-                cropped;
-            if (this.options.minSize > 0)   {
-                cropped = this.options.aspectRatio >= 1 ? this.previewSize.width : this.previewSize.height;
-                cropped -= 2 * this.options.margin;
-                cropped /= this.scale;
-                zoomMax = cropped / this.options.minSize;
-            }
-            if (this.zoom > zoomMax)    {
-                this.zoom = Math.max(zoomMax, 1);
-                this._setImgSize();
-            }
-            if (zoomMax > 1) { this.slider.slider("option", "max", zoomMax).slider("enable"); }
-            else { this._reset(); }
         },
 
         _positionSlider: function() {
@@ -266,58 +292,63 @@
 
         // Set margin. Implemented as border of overlay.
         _setMargin: function ()  {
-            this.overlay.css({ borderWidth: this.options.margin });
+            this.overlay.css({ borderWidth: this.margin });
         },
 
-        // Set img position, constraining it to the crop area.
-        _setImgPosition: function (pos)  {
-            if (this.crop)  {
-                var m = this.options.margin;
-                this.img.css({
-                    left: Math.max(Math.min(pos.left, m), this.previewSize.width - this.imgSize.width - m),
-                    top: Math.max(Math.min(pos.top, m), this.previewSize.height - this.imgSize.height - m)
-                });
-            }
+        _centerImg: function()    {
+            this._moveImg({left: 0, top: 0});
+        },
+
+        _moveImg: function(pos)    {   // pos is center point, with respect to preview's center point
+            var offset = {
+                    left: (this.imgSize.width - this.previewSize.width) / 2,
+                    top: (this.imgSize.height - this.previewSize.height) / 2
+                },
+                contain = {
+                    halfWidth: this.margin + offset.left,
+                    halfHeight: this.margin + offset.top
+                };
+
+            pos.left = Math.max(Math.min(pos.left, contain.halfWidth), -contain.halfWidth);
+            pos.top = Math.max(Math.min(pos.top, contain.halfHeight), -contain.halfHeight);
+
+            this.imgPos = pos;
+
+            this.img.css({
+                left: pos.left - offset.left,
+                top: pos.top - offset.top
+            });
         },
 
         // Change zoom. Center point of crop area remains the same.
         _changeZoom: function (zoom) {
-            var posImg = this.img.position(),
-                pos = {                 // translate center point of crop area to origin
-                    left: this.previewSize.width / 2 - posImg.left,
-                    top: this.previewSize.height / 2 - posImg.top
-                },
-                f = zoom / this.zoom;   // new zoom value / old zoom value
-            pos.left *= f;              // scale
-            pos.top *= f;
-            this.zoom = zoom;           // set new value
-            posImg.left = this.previewSize.width / 2 - pos.left;     // translate origin back to center point
-            posImg.top = this.previewSize.height / 2 - pos.top;
-            this.img.css(posImg);       // set new position
+            var pos = this.imgPos,
+                f = zoom / this.zoom;   // new zoom / old zoom
 
+            pos.left *= f;      // scale
+            pos.top *= f;
+            this.zoom = zoom;   // set new value
             this._setImgSize();
+            this._moveImg(pos);
             this._report();
         },
 
-        _centerImage: function ()    {
-            if (this.crop)  {
-                this.img.css({
-                    left: (this.previewSize.width - this.imgSize.width) / 2,
-                    top: (this.previewSize.height - this.imgSize.height) / 2
-                });
-            }
-        },
-
         _report: function () {
-            if (this.crop)  {
-                var pos = this.img.position(),
-                    m = this.options.margin,
+            if (this.loaded && this.crop)  {
+                var pos = {     // clone imgPos
+                        left: this.imgPos.left,
+                        top: this.imgPos.top
+                    },
+                    m = this.margin,
                     f = 1 / (this.scale * this.zoom);
+
+                pos.left = m + (this.imgSize.width - this.previewSize.width) / 2 - pos.left;
+                pos.top = m + (this.imgSize.height - this.previewSize.height) / 2 - pos.top;
 
                 this._trigger("change", null, {     // trigger change event
                     aspect: this.options.aspectRatio,
-                    x: f * (m - pos.left),          // coordinates in native pixels
-                    y: f * (m - pos.top),
+                    x: f * pos.left,          // coordinates in native pixels
+                    y: f * pos.top,
                     w: f * (this.previewSize.width - 2 * m),
                     h: f * (this.previewSize.height - 2 * m)
                 });
@@ -333,6 +364,5 @@
                 h: 0
             });
         }
-
     });
 } (jQuery));
