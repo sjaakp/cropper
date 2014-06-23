@@ -30,8 +30,8 @@
                 reader;
 
             // restore defaults
-            this.scale = this.zoom =  1; //this.scaleMax = 1;
-            this.margin = this.options.margin;
+            this.scale = this.zoom =  1;
+            this.margin = Number(this.options.margin);    // explicit cast to number to avoid problems with + operator
             this.crop = true;
             this.loaded = false;
 
@@ -138,6 +138,9 @@
         },
 
         _setOption: function (key, value)    {
+            if (key === "sliderPosition")  {
+                this.element.removeClass("sjaakp-spos-" + this.options.sliderPosition);     // remove old class
+            }
             this._super(key, value);
             switch(key) {
                 case "aspectRatio":
@@ -148,7 +151,7 @@
                     break;
 
                 case "margin":
-                    this.margin = Number(value);    // set current margin to option value
+                    this.margin = Number(value);    // set current margin to option value; explicit cast to number
                     this._calcPreviewSize();
                     this._calcScale();    // scale doesn't change; current margin might!
                     this._setMargin();
@@ -166,6 +169,7 @@
 
                 case "minSize":
                     this._calcScale();
+                    break;
 
                 default:
                     break;
@@ -268,8 +272,7 @@
         _positionSlider: function() {
             var pos = this.options.sliderPosition;
             this.slider.slider("option", "orientation", pos === "top" || pos === "bottom" ? "horizontal" : "vertical");
-            this.element.removeClass("sjaakp-spos-top sjaakp-spos-bottom sjaakp-spos-left sjaakp-spos-right")
-                .addClass("sjaakp-spos-" + this.options.sliderPosition);
+            this.element.addClass("sjaakp-spos-" + this.options.sliderPosition);
             if (pos === "top" || pos === "left")    {
                 this.element.prepend(this.slider);
             }
@@ -335,20 +338,18 @@
 
         _report: function () {
             if (this.loaded && this.crop)  {
-                var pos = {     // clone imgPos
-                        left: this.imgPos.left,
-                        top: this.imgPos.top
-                    },
+                var posLeft = this.imgPos.left,
+                    posTop = this.imgPos.top,
                     m = this.margin,
                     f = 1 / (this.scale * this.zoom);
 
-                pos.left = m + (this.imgSize.width - this.previewSize.width) / 2 - pos.left;
-                pos.top = m + (this.imgSize.height - this.previewSize.height) / 2 - pos.top;
+                posLeft = m + (this.imgSize.width - this.previewSize.width) / 2 - posLeft;
+                posTop = m + (this.imgSize.height - this.previewSize.height) / 2 - posTop;
 
                 this._trigger("change", null, {     // trigger change event
                     aspect: this.options.aspectRatio,
-                    x: f * pos.left,          // coordinates in native pixels
-                    y: f * pos.top,
+                    x: f * posLeft,          // coordinates in native pixels
+                    y: f * posTop,
                     w: f * (this.previewSize.width - 2 * m),
                     h: f * (this.previewSize.height - 2 * m)
                 });
