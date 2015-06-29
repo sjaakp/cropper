@@ -10,7 +10,7 @@ Here is **Cropper**'s  [GitHub page](https://github.com/sjaakp/cropper).
 
 Install **Cropper** with [Bower](http://bower.io/):
 
-	bower install cropper
+	bower install sjaakp-cropper
 
 You can also manually install **Cropper** by [downloading the source in ZIP-format](https://github.com/sjaakp/cropper/archive/master.zip).
 
