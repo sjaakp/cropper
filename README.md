@@ -2,6 +2,18 @@
 
 **Cropper** is a jQuery widget to add cropping by zoom and pan to any application. The cropping area is set by dragging the image 'under' the widget, and zooming with a slider. **Cropper** should work in any modern browser.
 
+You can see **Cropper** in action [here](http://www.sjaakpriester.nl/software/cropper).
+
+Here is **Cropper**'s  [GitHub page](https://github.com/sjaakp/cropper).
+
+## Install ##
+
+Install **Cropper** with [Bower](http://bower.io/):
+
+	bower install cropper
+
+You can also manually install **Cropper** by [downloading the source in ZIP-format](https://github.com/sjaakp/cropper/archive/master.zip).
+
 ## Dependencies ##
 
 **Cropper** depends on jQuery and jQuery.ui.
