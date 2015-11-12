@@ -2,8 +2,11 @@
 /*jslint nomen: true, unparam: true, white: true */
 /**
  * MIT licence
- * Version 1.0
- * Sjaak Priester, Amsterdam 13-06-2014.
+ * Version 1.0.1
+ * Sjaak Priester, Amsterdam 13-06-2014 ... 12-11-2015.
+ *
+ * @link https://github.com/sjaakp/cropper
+ * @link http://www.sjaakpriester.nl/software/cropper
  */
 (function ($) {
     "use strict";
@@ -97,7 +100,7 @@
                 dblclick: function(evt) {
                     this.slider.slider("option", "value", 1);
                     this._changeZoom(1);
-                }
+                }.bind(this)
             });
 
             var dragging = false;
@@ -121,19 +124,19 @@
                                     this._report();
                                     evt.preventDefault();
                                 }
-                            },
+                            }.bind(this),
                             mouseup: function (evt) {
                                 if (dragging)   {
                                     this._off(this.document, "mousemove mouseup");  // unbind events
                                     dragging = false;
                                     evt.preventDefault();
                                 }
-                            }
+                            }.bind(this)
                         });
 
                         evt.preventDefault();
                     }
-                }
+                }.bind(this)
             });
         },
 
@@ -227,14 +230,7 @@
                     scaleMax,
                     maxZoom;
 
-                if (scale >= 1)  {
-                    scale = 1;
-                    this.margin = Math.max(this.previewSize.width - this.nativeSize.width, this.previewSize.height - this.nativeSize.height) / 2;
-                    this._setMargin();
-                }
-
                 scaleMax = Math.max(cropWidth, cropHeight) / this.options.minSize;
-                this.scale = scale;
 
                 if (scaleMax < scale)  {
                     this.overlay.hide();
@@ -252,6 +248,12 @@
                         step: maxZoom / 100
                     });
                 }
+
+                if (scale >= 1)  {
+                    scale = 1;
+                }
+
+                this.scale = scale;
                 this._setImgSize();
             }
             else { this.scale = 1; }
