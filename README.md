@@ -33,17 +33,28 @@ Of the jQuery.ui library, only the slider widget is used. Therefore, only the fo
 
 In the `header` part of the HTML-page, link to the style sheets (`.css`) of jQuery.ui and of **Cropper**, like:
 
-    <link href="http://code.jquery.com/ui/1.10.4/themes/smoothness/jquery-ui.css" rel="stylesheet">
+    <link href="https://code.jquery.com/ui/1.10.4/themes/smoothness/jquery-ui.css" rel="stylesheet">
     <link href="css/jquery.cropper.min.css" rel="stylesheet">
 
 At the end of the `body` part, load the jQuery and jQuery.ui libraries:
  
-    <script src="http://code.jquery.com/jquery-2.1.1.min.js"></script>
-    <script src="http://code.jquery.com/ui/1.10.4/jquery-ui.min.js"></script>
+    <script src="https://code.jquery.com/jquery-2.1.1.min.js"></script>
+    <script src="https://code.jquery.com/ui/1.10.4/jquery-ui.min.js"></script>
 
 And load the **Cropper** code:
 
     <script src="js/jquery.cropper.js"></script>
+    
+#### Load from CDN ####
+
+You may also load the **Cropper** files from a content distribution network (CDN), like so:
+
+    <link href="https://unpkg.com/@sjaakp/cropper/css/jquery.cropper.min.css" rel="stylesheet">
+
+And:
+
+    <script src="https://unpkg.com/@sjaakp/cropper/js/jquery.cropper.min.js"></script>
+
  
 #### Set-up ####
 
@@ -140,5 +151,5 @@ The crop dimensions are all in pixels. All the members of `data` are floats (wit
 
 ## Acknowledgements ##
 
-I drew inspiration from [Rabona's Image Crop](http://codecanyon.net/item/image-crop/full_screen_preview/5348464) for the look and feel.  However, **Cropper** was coded from scratch.
+I drew inspiration from [Rabona's Image Crop](https://codecanyon.net/item/image-crop/5348464) for the look and feel.  However, **Cropper** was coded from scratch.
  
