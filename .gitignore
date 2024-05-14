@@ -1,0 +1,4 @@
+node_modules
+project
+package-lock.json
+dist/cropper.js.map

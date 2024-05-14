@@ -1,155 +1,238 @@
-# Cropper #
+# Cropper 2.0 #
 
-**Cropper** is a jQuery widget to add cropping by zoom and pan to any application. The cropping area is set by dragging the image 'under' the widget, and zooming with a slider. **Cropper** should work in any modern browser.
 
-You can see **Cropper** in action [here](http://www.sjaakpriester.nl/software/cropper).
 
-Here is **Cropper**'s  [GitHub page](https://github.com/sjaakp/cropper).
+
+**Cropper** is a widget to add cropping by zoom and pan 
+to any application. The cropping area is set by dragging the image 
+'under' the widget. Zooming can be adjusted by a slider.
+**Cropper** should work in any modern browser. Double-clicking the image
+will center it. Double-clicking the zoom slider resets it to 1.
+
+**Cropper 2.0** is different from version 1.0. While the first version was
+dependent on jQuery, **Cropper 2.0** is not. Also, the API has changed
+considerably. You can now drap-and-drop image files onto the widget.  
+
+You can see **Cropper 2.0** in action [here](http://www.sjaakpriester.nl/software/cropper).
+
+Here is **Cropper 2.0**'s  [GitHub page](https://github.com/sjaakp/cropper).
 
 ## Install ##
 
-Install **Cropper** with [Bower](http://bower.io/):
+Install **Cropper 2.0** with [npm](https://www.npmjs.com//):
 
-	bower install sjaakp-cropper
+	npm i @sjaakp/cropper
 
-You can also manually install **Cropper** by [downloading the source in ZIP-format](https://github.com/sjaakp/cropper/archive/master.zip).
+You can also manually install **Cropper 2.0** by
+[downloading the source in ZIP-format](https://github.com/sjaakp/cropper/archive/master.zip).
 
 ## Dependencies ##
 
-**Cropper** depends on jQuery and jQuery.ui.
-It is tested with jQuery 2.1.1, and jQuery.ui 1.10.4.
-
-Of the jQuery.ui library, only the slider widget is used. Therefore, only the following modules are required:
-
-- slider
-- core
-- widget
-- position
-- mouse
+**Cropper 2.0** has no dependencies.
 
 ## Usage ##
 
 #### Load resources ####
 
-In the `header` part of the HTML-page, link to the style sheets (`.css`) of jQuery.ui and of **Cropper**, like:
+At the end of the `body` part of the HTML-page,
+load the **Cropper 2.0** code from the `dist` directory of this depository:
 
-    <link href="https://code.jquery.com/ui/1.10.4/themes/smoothness/jquery-ui.css" rel="stylesheet">
-    <link href="css/jquery.cropper.min.css" rel="stylesheet">
-
-At the end of the `body` part, load the jQuery and jQuery.ui libraries:
- 
-    <script src="https://code.jquery.com/jquery-2.1.1.min.js"></script>
-    <script src="https://code.jquery.com/ui/1.10.4/jquery-ui.min.js"></script>
-
-And load the **Cropper** code:
-
-    <script src="js/jquery.cropper.js"></script>
+    <script src="dist/cropper.js"></script>
     
 #### Load from CDN ####
 
-You may also load the **Cropper** files from a content distribution network (CDN), like so:
+You may also load the **Cropper 2.0** file from a content distribution
+network (CDN), like so:
 
-    <link href="https://unpkg.com/@sjaakp/cropper/css/jquery.cropper.min.css" rel="stylesheet">
-
-And:
-
-    <script src="https://unpkg.com/@sjaakp/cropper/js/jquery.cropper.min.js"></script>
+    <script src="https://unpkg.com/@sjaakp/cropper/dist/cropper.js"></script>
 
  
 #### Set-up ####
 
-**Cropper** is loaded like most other jQuery.ui widgets. The code might look something like:
+**Cropper 2.0** creates itself around a HTML `<input>` of the `file`-type,
+most probably inside a HTML `<form>`. The `<input>` should have a `name`,
+as is common for `<form>` elements, and, optionally, an `id`.
+It would be wise to also set `accept="image/*"`.
+
+The HTML could look something like:
+
+    <html>
+        <head> ... </head>
+        <body>
+            ... other stuff ...
+            <form>
+                ... other form elements ...
+                <input type="file" id="crop1" name="image" accept="image/*">
+                ... more form elements ...
+                <button type="submit">Submit</button>
+            </form>
+            ... more stuff ...
+            <script src="dist/cropper.js"></script>
+        </body>
+    </html>
+
+Initializing **Cropper 2.0** is as simple as:
 
     <script>
-        $(document).ready(function () {
-            $("#cropper").cropper({
-                ... cropper options ...
-            });
-        });
+        cropper();
     </script>
 
-One ore more (or zero) options may be set, like:
+The function `cropper()` returns an `array` of **Crpper 2.0** instances on the page. In almost all cases this will be just one **Cropper 2.0**, 
+but you can have more.
+
+If you want to access a single **Cropper 2.0** instance you could store it like this:
 
     <script>
-        $(document).ready(function () {
-            $("#cropper").cropper({
-                aspectRatio: .75,
-                sliderPosition: "left"
-            });
-        });
+        window.myCropper = cropper()[0];
     </script>
+
+You can also access a **Cropper 2.0** through the `cropper` property
+of the file `<input>`.
 
 ## Loading an image ##
 
-After set-up, an image can be loaded in **Cropper** as follows:
+After set-up, an image can be loaded in **Cropper 2.0** in four ways.
+Firstly, it can be drag-and-dropped directly. Secondly, you can select
+an image after pressing the 'Choose Ímage'-button.
 
-    $("#cropper").cropper({"loadImage", src});
+Programmatically, it can be loaded like so:
 
-Where `src` can be anything that can be `src` of an HTML `img`. So, to load a picture of Newton, the code might be:
+    myCropper.loadImage(src);
 
-    $("#cropper").cropper({"loadImage", "img/Newton.jpg"});
+Or, through the associated file `<input>`:
 
-`src` can be an image url, but also a Web `File` or a `FileList`, like those from a HTML file input. Take a look at the source code of `demo.html` for an example.
+    document.getElementById("crop1").cropper.loadImage(src);
 
-If `src` is `false` **Cropper** will be emptied.
+Where `src` can be anything that can be `src` of an HTML `img`. 
+So, to load a picture of Newton, the code might be:
 
-## Options ##
+    myCropper.loadImage("img/Newton.jpg");
 
-Options can be set at set-up time (see above) or at run time. The technique is the same as with most other jQuery.ui widgets. So, to set `aspectRatio` to 1.33 after **Cropper** has been initialized, use something like:
+If `src` is `false` **Cropper 2.0** will be emptied. The 'Empty Cropper'
+button does the same.
 
-    $("#cropper").cropper({"option", "aspectRatio", 1.33});
+## Getting crop information ##
 
-To read an option:
+**Cropper 2.0** creates an extra hidden `<input>`. This is permanently
+updated with a JSON representation of the crop information. The hidden 
+`<input>`'s name is derived from the name of the associated file `<input>`
+by adding `"-data"` to it. A **Cropper 2.0** created around a file `<input>`
+named `"image"` will have a hidden `<input>` named `"input-data"`. (If
+the associated file `<input>` doesn't have a name, the hidden `<input>`
+wille be named `"cropper-data"`.)
 
-    var asp = $("#cropper").cropper({"option", "aspectRatio"});
-
-The options have immediate effect after they have been set, so changes are in real time.
-
-#### aspectRatio ####
-
-A float describing the dimensions of the cropped area, i.e. width / height. A square cropped area will have `aspectRatio: 1`, while a portrait layout may have `aspectRatio: .75`, and a landscape layout `aspectRatio: 1.5`. Default is 1.
-
-#### margin ####
-
-The width of **Cropper**'s area margin, in pixels. Default is 40.
-
-#### diagonal ####
-
-The diagonal of the cropping area, in pixels. If `aspectRatio` changes, both width and height of the cropping area change, but the diagonal is constant. Default: 300.
-
-#### minSize ####
-
-The minimal size of the cropped area in pixels. The size is the length of the greatest side, so for a portrait layout it will be the height. If an image is too small, it will not be cropped. `minSize` also determines the maximum zoom factor of the image. Default: 240.
-
-#### sliderPosition ####
-
-Position of the slider with respect to the preview area. Possible values: `"top"`, `"bottom"`, `"left"`, `"right"`. Default is `"bottom"`.
-
-#### change ####
-
-The handler of the `change` event. See below.
-
-## Events ##
-
-#### change ####
-
-Whenever something changes, **Cropper** fires the `change` event. This can be used to update other elements on the page, f.i. hidden inputs. 
-
-The event handler has to be a  function or a closure with the signature `function(evt, data)`, where `evt` is the usual Javascript event object. `data` is an object containing the following **Cropper** information:
+The value of the hidden `<input>` is a JSON-representation of the following
+plain object:
 
     {
         aspect: ...		// the current aspect ratio
-		x: ...			// left position of the crop area
-		y: ...			// top position of the crop area
-		w: ...			// width of the crop area
-		y: ...			// height of the crop area
+        x: ...		// left position of the cropped area
+        y: ...		// top position of the cropped area
+        w: ...		// width of the cropped area
+        y: ...		// height of the cropped area
     }
 
-The crop dimensions are all in pixels. All the members of `data` are floats (with an almost ridiculous precision), including the pixel values. Keep that in mind when processing them.
+Example value:
 
-`demo.html` contains an example how the `change` event may be utilised. In this case, the handler function is set as the `change` option at set-up time.
+    "{aspect:0.75,x:283.72518797781396,y:8.614753563516281,w:456.54962404437214,h:608.7328320591628}"
 
-## Acknowledgements ##
+The crop dimensions are all in pixels. All the members of `data` are floats
+(with an almost ridiculous precision). Keep that in mind when processing them.
 
-I drew inspiration from [Rabona's Image Crop](https://codecanyon.net/item/image-crop/5348464) for the look and feel.  However, **Cropper** was coded from scratch.
- 
+## Options ##
+
+Options are set by setting `data-*` attribute(s) on the associated
+`<input>` element, for instance:
+
+    <input type="file" name="image" accept="image/*" data-aspect="portrait">
+
+You can also set options with a plain object as the **second** parameter
+of the initialization function. Leave out the `data-` part of the
+option name. Example:
+
+    <script>
+        cropper({}, { aspect: 'portrait' });
+    </script>
+
+#### data-aspect ####
+
+A value describing the dimensions of the cropped area, i.e. width / height 
+ratio. A square cropped area will have `data-aspect="square"`,
+while a portrait layout may have `data-aspect=".75"`. Default is 1.
+
+The value can be a float between 0.2 and 5.0,
+or one of the following strings:
+
+ - **'tower'** equivalent to 0.429, 9:21
+ - **'high'** equivalent to 0.563, 9:16
+ - **'din_portrait'** equivalent to 0.707, 1:√2
+ - **'portrait'** equivalent to 0.75, 3:4
+ - **'square'** equivalent to 1.0, 1:1
+ - **'landscape'** equivalent to 1.333, 4:3
+ - **'din_landscape'** equivalent to 1.414, √2:1
+ - **'wide'** equivalent to 1.718, 16:9
+ - **'cinema'** equivalent to 2.333, 21:9
+
+#### data-margin ####
+
+The width of **Cropper 2.0**'s area margin, in pixels. Default is 40.
+
+#### data-diagonal ####
+
+The diagonal of the cropping area, in pixels. 
+If `data-aspect` changes, both width and height of the cropping area
+change, but the diagonal is constant. Default: 300.
+
+#### data-maxZoom ####
+
+The maximum zoom **Cropper 2.0** will allow. A float value between 2.0 and 10.0.
+Default: 4.0.
+
+## Event ##
+
+#### cropperchange ####
+
+Whenever something changes, **Cropper 2.0** fires the `cropperchange` event.
+The `detail` property of the Event object contains crop information: 
+
+    {
+        aspect: ...		// the current aspect ratio
+        x: ...		// left position of the cropped area
+        y: ...		// top position of the cropped area
+        w: ...		// width of the cropped area
+        y: ...		// height of the cropped area
+    }
+
+## Internationalization ##
+
+**Cropper 2.0** displays some text messages in English. These can be adapted by
+providing a plain object with translated messages as the **first** parameter
+of the initialization function. For instance, to translate the messages into
+Dutch, initialize **Cropper 2.0** like this:
+
+    <script>
+        cropper({
+            choose: "Kies een afbeelding...",
+            empty: "Maak leeg",
+            drop: "Sleep afbeelding hierheen",
+            zoom: "Zoom"
+        }, { ...options... });
+    </script>
+
+## Appearance ##
+
+Some aspects of **Cropper 2.0**'s appearance can be adapted by setting
+CSS custom properties inside the ruleset for the class of **Cropper 2.0**'s
+surrounding `<div>`: `.cropper-wrap` (or, of course, any DOM-element 
+higher in the cascade).
+
+The properties, together with their default value:
+
+ - **--cropper-border-color**, default: `ButtonBorder` 
+ - **--cropper-border-width**, default: `2px` 
+ - **--cropper-border-radius**, default: `.4em` 
+ - **--cropper-gap**, default: `.6em` 
+ - **--cropper-drop**, default: `GrayText` 
+ - **--cropper-drop-text**, default: `Canvas` 
+ - **--cropper-gray**, default: `GrayText` 
+ - **--cropper-button**, default: `ButtonText` 
