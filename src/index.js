@@ -56,6 +56,7 @@ function Cropper(elmt, translations = {}, options = {}) {
     this.jsonData = jsonData;
     this.wrap = wrap;
 
+    this.aspect = 1;
     this.scale = 1;     // minimum scale to let image cover preview
     this.translate = { x: 0, y: 0 };
     this.range = { x: 0, y: 0 };
@@ -126,6 +127,7 @@ function Cropper(elmt, translations = {}, options = {}) {
         this.loadImage(false);
     }.bind(this));
 
+    this.setAspect(this.settings.aspect);
     this._setCrop();
 
     // console.log(this);
@@ -206,7 +208,7 @@ Cropper.prototype = {
 
     _sanitizeSettings() {
         const asp = this.settings.aspect;
-        if (asp < .2 || asp > 5) this.settings.aspect = this.defaults.aspect;
+        if (! isNaN(asp) && (asp < .2 || asp > 5)) this.settings.aspect = this.defaults.aspect;
         const diag = this.settings.diagonal;
         if (diag < 80 || diag > 2000) this.settings.diagonal = this.defaults.diagonal;
         const mrg = this.settings.margin;
@@ -216,7 +218,7 @@ Cropper.prototype = {
     },
 
     _setCrop() {
-        let asp = this.settings.aspect,
+        let asp = this.aspect,
             d = Math.sqrt(1 + asp * asp),       // Pythagoras
             h = this.settings.diagonal / d,
             w = h * asp,
@@ -284,7 +286,7 @@ Cropper.prototype = {
             cinema: 2.333             // 21 x 9
         };
         if (isNaN(aspect)) aspect = presets[aspect] ?? 1.0;
-        this.settings.aspect = aspect;
+        this.aspect = +aspect;
         this._sanitizeSettings();
         this._resetAll();
     },
@@ -334,7 +336,7 @@ Cropper.prototype = {
         ;
 
         const r = {
-            aspect: parseFloat(this.settings.aspect),
+            aspect: this.aspect,
             x: this.loaded ? ((this.imageSize.width - cw) / 2 - this.translate.x/* + dx*/) / sz : 0,
             y: this.loaded ? ((this.imageSize.height - ch) / 2 - this.translate.y/* + dy*/) / sz : 0,
             w: this.loaded ? cw / sz : 0,
