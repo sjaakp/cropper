@@ -1,6 +1,6 @@
 {
   "name": "@sjaakp/cropper",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "description": "image cropper widget",
   "main": "index.js",
   "scripts": {
