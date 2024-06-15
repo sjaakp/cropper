@@ -7,7 +7,7 @@
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: var(--cropper-gap, .6em);
-    max-width: min-content;
+    width: fit-content;
 }
 
 .cropper-preview{
@@ -48,6 +48,11 @@
     z-index: 1;
     user-select: none;
     border: 40px solid rgba(255,255,255,.75);
+    cursor: grab;
+}
+
+.cropper-dragging .cropper-overlay {
+    cursor: grabbing;
 }
 
 .cropper-msg {
@@ -85,7 +90,65 @@
     display: none;
 }
 
+/*https://www.sitepoint.com/css-custom-range-slider/*/
 .cropper-wrap [type=range]{
-    grid-area: 2/span 2;
-    display: inline-block;
+    --c: var(--cropper-range, SelectedItem); /* accent color */
+    --_c: color-mix(in srgb, var(--c), #fff var(--p,0%)); /* modified by hover */
+    --a: var(--_c); /* active color */
+    --g: var(--cropper-gray, GrayText); /* gray color */
+    --l: 5px; /* line thickness*/
+    --s: 1em; /* thumb size*/
+    --b: var(--cropper-border-width, 2px); /* thumb border width */
+
+    /*width: 8em;*/
+    height: var(--s); /* needed for Firefox*/
+    -webkit-appearance :none;
+    -moz-appearance :none;
+    appearance :none;
+    background: none;
+    cursor: pointer;
+    overflow: hidden;
+
+    &:active,
+    &:focus-visible {
+        --b: var(--s);
+    }
+
+    &:focus-visible,
+    &:hover{
+        --p: 25%;
+    }
+}
+/*.cropper-wrap [type="range" i]::-webkit-slider-thumb  whether the i?{*/
+.cropper-wrap [type="range"]::-webkit-slider-thumb{
+    height: var(--s);
+    aspect-ratio: 1;
+    border-radius: 50%;
+    box-shadow: 0 0 0 var(--b,var(--l)) inset var(--_c);
+    transition: .3s;
+    border-image: linear-gradient(90deg, var(--a) 50%, var(--g) 0) 0 1/calc(50% - var(--l)/2) 100vw/0 100vw;
+    -webkit-appearance: none;
+    appearance: none;
+}
+.cropper-wrap [type="range"]::-moz-range-thumb{
+    height: var(--s);
+    background: none;
+    border-radius: 50%;
+    box-shadow: 0 0 0 var(--b,var(--l)) inset var(--_c);
+    transition: .3s;
+    border-image: linear-gradient(90deg, var(--a) 50%, var(--g) 0) 0 1/calc(50% - var(--l)/2) 100vw/0 100vw;
+    -moz-appearance: none;
+    appearance: none;
+}
+
+.cropper-wrap .cropper-rotation {
+    --a: var(--g);  /* active color gray */
+}
+
+.cropper-no-rotation .cropper-scale {
+    grid-area: auto/span 2;
+}
+
+.cropper-no-rotation .cropper-rotation {
+    display: none;
 }

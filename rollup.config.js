@@ -2,9 +2,8 @@
 import resolve from '@rollup/plugin-node-resolve';
 import commonjs from '@rollup/plugin-commonjs';
 import json from '@rollup/plugin-json';
-import scss from 'rollup-plugin-scss';
+import css from "rollup-plugin-import-css";
 import {terser} from 'rollup-plugin-terser';
-import {version} from './package.json';
 
 const widgetName = 'Cropper';
 const year = new Date().getFullYear();
@@ -12,7 +11,7 @@ const date = new Date().toDateString();
 
 const banner = `
 /*!
- * ${widgetName} ${version}
+ * ${widgetName} 2.1.0
  * (c) ${year} sjaakpriester.nl
  */
 `;
@@ -36,17 +35,17 @@ export default {
         }),
         commonjs(),
         json(),
-        scss({
-            insert: true,
-            outputStyle: "compressed",
-            // sourceMap: true
+        css({
+            inject: true,
+            minify: true
         }),
         terser({
-            output: {
+            mangle: {
+                keep_fnames: true
+            },
+            format: {
                 comments: /^!/
             }
         })
     ],
-    external: [
-    ]
 };

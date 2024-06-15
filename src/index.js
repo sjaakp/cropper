@@ -1,5 +1,5 @@
 import './index.css';
-import version from './version';
+const version = 'v2.1.0 2024-06-12';
 
 function Cropper(elmt, translations = {}, options = {}) {
     this.settings = Object.assign({}, this.defaults, options, elmt.dataset);
@@ -12,6 +12,7 @@ function Cropper(elmt, translations = {}, options = {}) {
         overlay = document.createElement('div'),
         image = document.createElement('img'),
         zoomCtrl = document.createElement('input'),
+        rotCtrl = document.createElement('input'),
         msg = document.createElement('div'),
         jsonData = document.createElement('input'),
         label = document.createElement('label'),
@@ -28,11 +29,20 @@ function Cropper(elmt, translations = {}, options = {}) {
     image.classList.add('cropper-image');
     zoomCtrl.classList.add('cropper-scale');
     zoomCtrl.type = 'range';
+    zoomCtrl.setAttribute('min', '0');
     zoomCtrl.setAttribute('step', 'any');
     zoomCtrl.setAttribute('title', this.text.zoom);
 
+    rotCtrl.type = 'range';
+    rotCtrl.setAttribute('step', 'any');
+    rotCtrl.setAttribute('title', this.text.angle);
+    rotCtrl.value = '0';
+    rotCtrl.classList.add('cropper-rotation');
+
     jsonData.type = 'hidden';
-    jsonData.name = (elmt.name || 'cropper') + '-data';
+    jsonData.name = /(.*)\[(.*)]/gm.exec(elmt.name) ?
+        `${(/(.*)\[(.*)]/gm.exec(elmt.name))[1]}[${(/(.*)\[(.*)]/gm.exec(elmt.name))[2]}_data]` :
+        (elmt.name || 'cropper') + '_data';
 
     label.innerHTML = "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 384 512' fill='currentColor'><path d='M365.3 93.38l-74.63-74.64C278.6 6.742 262.3 0 245.4 0H64C28.65 0 0 28.65 0 64l.0065 384c0 35.34 28.65 64 64 64H320c35.2 0 64-28.8 64-64V138.6C384 121.7 377.3 105.4 365.3 93.38zM336 448c0 8.836-7.164 16-16 16H64.02c-8.838 0-16-7.164-16-16L48 64.13c0-8.836 7.164-16 16-16h160L224 128c0 17.67 14.33 32 32 32h79.1V448zM215.3 292c-4.68 0-9.051 2.34-11.65 6.234L164 357.8l-11.68-17.53C149.7 336.3 145.3 334 140.7 334c-4.682 0-9.053 2.34-11.65 6.234l-46.67 70c-2.865 4.297-3.131 9.82-.6953 14.37C84.09 429.2 88.84 432 93.1 432h196c5.163 0 9.907-2.844 12.34-7.395c2.436-4.551 2.17-10.07-.6953-14.37l-74.67-112C224.4 294.3 220 292 215.3 292zM128 288c17.67 0 32-14.33 32-32S145.7 224 128 224S96 238.3 96 256S110.3 288 128 288z' /svg>";
     label.setAttribute('title', this.text.choose);
@@ -43,8 +53,9 @@ function Cropper(elmt, translations = {}, options = {}) {
 
     elmt.parentNode.insertBefore(wrap, elmt);
     label.append(elmt);
+
     preview.append(drop, image, overlay);
-    wrap.append(preview, zoomCtrl, label, empty, msg, jsonData);
+    wrap.append(preview, zoomCtrl, rotCtrl, label, empty, msg, jsonData);
 
     elmt.cropper = this;
     this.element = elmt;
@@ -52,81 +63,104 @@ function Cropper(elmt, translations = {}, options = {}) {
     this.overlay = overlay;
     this.image = image;
     this.zoomCtrl = zoomCtrl;
+    this.rotCtrl = rotCtrl;
     this.msg = msg;
     this.jsonData = jsonData;
     this.wrap = wrap;
 
     this.aspect = 1;
+    this.imageAsp = 1;
     this.scale = 1;     // minimum scale to let image cover preview
     this.translate = { x: 0, y: 0 };
     this.range = { x: 0, y: 0 };
     this.imageSize = { width: 0, height: 0 };   // after scaling
+    this.envelopeSize = { width: 0, height: 0 };   // after scaling and rotation
 
-    this.zoom = 1;  // always > 1
+    this.zoom = 1;  // always >= 1
+    this.rotation = 0;
+    this.rotSin = 0;
+    this.absSin = 0; // abs value
+    this.rotCos = 1; //. always >=0 (assuming rotation is between - pi/2 and pi/2)
+    this.rotScale = 1; // extra scale resulting from rotation, always >= 1
 
     this.dragging = -1;
     this.loaded = false;
 
-    elmt.addEventListener('change', function(ev) {
+    elmt.addEventListener('change', (_ev) => {
         this._loadFile();
-    }.bind(this));
+    });
 
-    preview.addEventListener('dragenter', function(ev) {
-        // ev.stopPropagation();
+    preview.addEventListener('dragenter', (ev) => {
         ev.preventDefault();
     });
 
-    preview.addEventListener('dragover', function(ev) {
-        // ev.stopPropagation();
+    preview.addEventListener('dragover', (ev) => {
         ev.preventDefault();
     });
 
-    preview.addEventListener('drop', function(ev) {
-        // ev.stopPropagation();
+    preview.addEventListener('drop', (ev) => {
         ev.preventDefault();
         this.element.files = ev.dataTransfer.files;
         this._loadFile();
-    }.bind(this));
+    });
 
-    overlay.addEventListener('pointerdown', function(ev) {
+    overlay.addEventListener('pointerdown', (ev) => {
         if (this.loaded && ev.button === 0)    {
+            this.wrap.classList.add('cropper-dragging');
             this.dragging = ev.pointerId;
         }
-    }.bind(this));
+    });
 
-    document.addEventListener('pointerup', function(ev) {
+    document.addEventListener('pointerup', (ev) => {
         if (ev.pointerId === this.dragging) {
             this.move(ev.movementX, ev.movementY);
+            this.wrap.classList.remove('cropper-dragging');
             this.dragging = -1;
+            this._update();
         }
-    }.bind(this));
+    });
 
-    document.addEventListener('pointermove', function(ev) {
+    document.addEventListener('pointermove', (ev) => {
         if (ev.pointerId === this.dragging)  {
             this.move(ev.movementX, ev.movementY);
+            this._update();
         }
-    }.bind(this));
+    });
 
-    overlay.addEventListener('dblclick', function(ev) {
+    overlay.addEventListener('dblclick', (_ev) => {
         if (this.loaded)    {
-            this.translate = { x: 0, y: 0 };
-            this.move(0, 0);
+            this._resetTranslate();
+            this._update();
         }
-    }.bind(this));
+    });
 
-    zoomCtrl.addEventListener('input', function(ev) {
+    zoomCtrl.addEventListener('input', (ev) => {
         this.setZoom(Math.exp(ev.target.valueAsNumber));
-    }.bind(this));
+        this._update();
+    });
 
-    zoomCtrl.addEventListener('dblclick', function(ev) {
+    zoomCtrl.addEventListener('dblclick', (ev) => {
         ev.target.value = 0;
         this.setZoom(1);
-    }.bind(this));
+        this._update();
+    });
 
-    empty.addEventListener('click', function(ev) {
+    rotCtrl.addEventListener('input', (ev) => {
+        this.setRotation(- ev.target.valueAsNumber);
+        this._update();
+    });
+
+    rotCtrl.addEventListener('dblclick', (_ev) => {
+        this._resetRotation();
+        this._update();
+    });
+
+    empty.addEventListener('click', (_ev) => {
         this.loadImage(false);
-    }.bind(this));
+    });
 
+    this.setMaxRotation(this.settings.maxRotation);
+    this.setMaxZoom(this.settings.maxZoom);
     this.setAspect(this.settings.aspect);
     this._setCrop();
 
@@ -135,13 +169,14 @@ function Cropper(elmt, translations = {}, options = {}) {
 
 Cropper.prototype = {
 
-    version: `v${version.version}, ${version.date}`,
+    version: version,
 
     defaults: {
         aspect: 1,
         margin: 40,
         diagonal: 300,
-        maxZoom: 4
+        maxZoom: 4,
+        maxRotation: 30
     },
 
     defaultText: {
@@ -149,6 +184,7 @@ Cropper.prototype = {
         empty: 'Empty cropper',
         drop: 'Drop file here',
         zoom: 'Zoom',
+        angle: 'Angle'
     },
 
     loadImage(url) {
@@ -158,9 +194,12 @@ Cropper.prototype = {
             this.image.removeAttribute('src');
             const dt = new DataTransfer();
             this.element.files = dt.files;
+            this.loaded = false;
             this._resetAll();
             this.msg.innerText = '';
             this.imageAsp = 1;
+            this._update();
+
             return; // empty
         }
 
@@ -168,8 +207,7 @@ Cropper.prototype = {
             .then(res => res.blob())
             .then(blob => {
                 const type = blob.type,
-                    name = url.replace(/^.*[\\\/]/, ''),
-                    size = blob.size;
+                    name = url.replace(/^.*[\\\/]/, '');
 
                 const file = new File([blob], name, {
                     type: type,
@@ -186,35 +224,35 @@ Cropper.prototype = {
         const file = this.element.files[0];
         if (file.type.match(/image.*/))  {
             const reader = new FileReader();
-            reader.addEventListener('load', function(ev) {
+            reader.addEventListener('load', (ev) => {
                 this.loaded = false;
                 this.wrap.classList.remove('cropper-loaded');
 
                 const preload = new Image();
 
-                preload.addEventListener('load', function(evt) {
+                preload.addEventListener('load', (evt) => {
                     this.loaded = true;
                     this.wrap.classList.add('cropper-loaded');
                     this.image.setAttribute('src', evt.target.src);
+                    this.imageAsp = this.image.naturalWidth / this.image.naturalHeight;
                     this._resetAll();
-                }.bind(this));
+                    this._calcImgSize();
+                    this._update();
+                });
 
                 preload.src = ev.target.result;
                 this.msg.innerText = file.name;
-            }.bind(this));
+            });
             reader.readAsDataURL(file);
         }
     },
 
     _sanitizeSettings() {
         const asp = this.settings.aspect;
-        if (! isNaN(asp) && (asp < .2 || asp > 5)) this.settings.aspect = this.defaults.aspect;
-        const diag = this.settings.diagonal;
-        if (diag < 80 || diag > 2000) this.settings.diagonal = this.defaults.diagonal;
-        const mrg = this.settings.margin;
-        if (mrg < 8 || mrg > 200) this.settings.margin = this.defaults.margin;
-        const mz = this.settings.maxZoom;
-        if (mz < 2 || mz > 10) this.settings.maxZoom = this.defaults.maxZoom;
+        if (! isNaN(asp)) this.settings.aspect = this._clamp(asp, .2, 5);
+        this.settings.diagonal = this._clamp(this.settings.diagonal, 80, 2000);
+        this.settings.margin = this._clamp(this.settings.margin, 8, 200);
+        this.settings.maxZoom = this._clamp(this.settings.maxZoom, 2, 10);
     },
 
     _setCrop() {
@@ -234,66 +272,96 @@ Cropper.prototype = {
         stylePreview.height = `${h + margins}px`;
     },
 
-    _calcBaseScale()    {
+    _calcImgSize() {
+        const sz = this.zoom * this.scale * this.rotScale,
+            w = sz * this.image.naturalWidth,
+            h = sz * this.image.naturalHeight;
+
+        this.imageSize = {
+            width: w,
+            height: h
+        }
+
+        this.envelopeSize = {
+            width: w * this.rotCos + h * this.absSin,
+            height: w * this.absSin + h * this.rotCos
+        }
+   },
+
+    _calcScale()    {
         this.scale = this.loaded ? Math.max(this.overlay.clientWidth / this.image.naturalWidth,
             this.overlay.clientHeight / this.image.naturalHeight) : 1;
     },
 
-    _calcRange()    {
-        this.range = {
-            x: (this.imageSize.width - this.overlay.clientWidth) / 2,
-            y: (this.imageSize.height - this.overlay.clientHeight) / 2,
-        };
-    },
-
-    _setMaxZoom()   {
-        const lnMz = Math.log(this.settings.maxZoom);
-
-        this.zoomCtrl.value = Math.min(lnMz, this.zoomCtrl.valueAsNumber);
-        this.zoomCtrl.setAttribute('max', lnMz);
+    _resetTranslate()   {
+        this.translate = { x: 0, y: 0 };
     },
 
     _resetZoom()    {
-        this.zoomCtrl.setAttribute('min', 0);
-        this._setMaxZoom();
-        this.zoomCtrl.value = 0;
+        this.zoomCtrl.value = '0';
         this.setZoom(1);
     },
 
     setZoom(zoom)   {
-        const sz = zoom * this.scale;
-
         this.zoom = zoom;
-        this.image.style.scale = sz;
-        this.imageSize = {
-            width: sz * this.image.naturalWidth,
-            height: sz * this.image.naturalHeight
+        this._calcImgSize();
+    },
+
+    _resetRotation()    {
+        this.rotCtrl.value = '0';
+        this.setRotation(0);
+    },
+
+    setRotation(rot) {
+        const sin = Math.sin(rot),
+            cos = Math.cos(rot),
+            absSin = Math.abs(sin),
+            asp = this.aspect,
+            imgAsp = this.imageAsp;
+
+        let hScale = cos + absSin / asp,
+            vScale = cos + absSin * asp;
+
+        if (asp > imgAsp) {
+            vScale *= imgAsp/asp;
+        } else {
+            hScale *= asp/imgAsp;
         }
-        this._calcRange();
-        this.move(0, 0);
+
+        this.rotation = rot;
+        this.rotSin = sin;
+        this.absSin = absSin;
+        this.rotCos = cos;
+        this.rotScale = Math.max(hScale, vScale);
+        this._calcImgSize();
     },
 
     setAspect(aspect)   {
         const presets = {
             tower: 0.429,             // 9 x 21
             high: 0.563,              // 9 x 16
+            phi_portrait: 0.618,      // 1 x phi, golden ratio
             din_portrait: 0.707,      // 1 x sqrt(2)
             portrait: 0.75,           // 3 x 4
             // square: 1.0,              // 1 x 1, default
             landscape: 1.333,         // 4 x 3
             din_landscape: 1.414,     // sqrt(2) x 1
+            phi_landscape: 1.618,     // phi x 1
             wide: 1.718,              // 16 x 9
             cinema: 2.333             // 21 x 9
         };
         if (isNaN(aspect)) aspect = presets[aspect] ?? 1.0;
-        this.aspect = +aspect;
-        this._sanitizeSettings();
+        this.aspect = +aspect;  // ensure float
         this._resetAll();
+        this._update();
     },
 
     setMargin(margin)   {
+        console.log('setMargin', margin);
         this.settings.margin = margin;
         this._sanitizeSettings();
+        console.log(this.settings);
+        this.overlay.style.borderWidth = `${this.settings.margin}px`;
         this._setCrop();
     },
 
@@ -301,25 +369,71 @@ Cropper.prototype = {
         this.settings.diagonal = diag;
         this._sanitizeSettings();
         this._resetAll();
+        this._update();
     },
 
-    _resetAll() {
-        this.translate = { x: 0, y: 0 };
-        this._setCrop();
-        this._calcBaseScale();
-        this._calcRange();
-        this._resetZoom();
+    setMaxRotation(degrees) {
+        const deg = this._clamp(degrees, 0, 90),
+            rad = deg * Math.PI / 180;
+
+        this.rotCtrl.setAttribute('min', (-rad).toString());
+        this.rotCtrl.setAttribute('max', rad.toString());
+
+        if (rad)    {
+            this.wrap.classList.remove('cropper-no-rotation');
+        } else {
+            this.wrap.classList.add('cropper-no-rotation');
+        }
+
+        this._resetRotation();
+        this._update();
     },
 
-    move(dx, dy)  {
-        let x = this.translate.x + dx,
-            y = this.translate.y + dy;
+    setMaxZoom(zoom)   {
+        const lnMz = Math.log(zoom);
 
-        x = Math.max(-this.range.x, Math.min(x, this.range.x));   // clamp
-        y = Math.max(-this.range.y, Math.min(y, this.range.y));
+        this.zoomCtrl.value = Math.min(lnMz, this.zoomCtrl.valueAsNumber).toString();
+        this.zoomCtrl.setAttribute('max', lnMz.toString());
+    },
 
-        this.translate = { x: x, y: y };
-        this.image.style.translate = `${x}px ${y}px`;
+    _update() {
+        const cw = this.overlay.clientWidth / 2,
+            ch = this.overlay.clientHeight / 2,
+            iw = this.imageSize.width / 2,
+            ih = this.imageSize.height / 2;
+
+        // rotate translate
+        let tr = this._rotatePoint(this.translate);
+
+        [0, 1, 2, 3].forEach((v) => {
+            const left = !(v & 1),
+                top = !(v & 2),
+                fx = left ? -cw : cw,   // frame corner
+                fy = top ? -ch : ch;
+
+            let ix = left ? -iw : iw,   // corresponding image corner
+                iy = top ? -ih : ih;
+
+            ix += tr.x;     // move image corner with rotated translate
+            iy += tr.y;
+
+            const corner = { x: fx, y:fy }, // frame corner, rotate
+                rotated = this._rotatePoint(corner),
+                clamp = {   // clamp rotated frame corner against corresponding image corner
+                    x: left ? Math.max(ix, rotated.x) : Math.min(ix, rotated.x),
+                    y: top ? Math.max(iy, rotated.y) : Math.min(iy, rotated.y)
+                },
+                corrected = this._counterRotatePoint(clamp);    // rotate back
+
+            tr.x -= corrected.x - corner.x;  // adapt translate as needed
+            tr.y -= corrected.y - corner.y;
+        });
+
+        this.translate = this._counterRotatePoint(tr);
+
+        this.image.style.scale = (this.zoom * this.scale * this.rotScale).toString();
+        this.image.style.translate = `${this.translate.x}px ${this.translate.y}px`;
+        this.image.style.rotate = `${this.rotation}rad`;
 
         const dims = this.getDimensions();
         this.jsonData.value = JSON.stringify(dims);
@@ -327,27 +441,55 @@ Cropper.prototype = {
         this.element.dispatchEvent(new CustomEvent('cropperchange', { detail: dims }));
     },
 
-    getDimensions() {
-        const sz = this.zoom * this.scale,
-            cw = this.overlay.clientWidth,
-            ch = this.overlay.clientHeight,
-            iw = this.imageSize.width,
-            ih = this.imageSize.height
-        ;
+    _resetAll() {
+        this._resetRotation();
+        this._resetZoom();
+        this._resetTranslate();
+        this._setCrop();
+        this._calcScale();
+    },
 
-        const r = {
+    move(dx, dy)  {
+        // this.translate = this._clampTrans({ x: this.translate.x + dx, y: this.translate.y + dy });
+        this.translate.x += dx;
+        this.translate.y += dy;
+    },
+
+    getDimensions() {
+        const sz = this.zoom * this.scale * this.rotScale,
+            cw = this.overlay.clientWidth,
+            ch = this.overlay.clientHeight;
+
+        return {
             aspect: this.aspect,
-            x: this.loaded ? ((this.imageSize.width - cw) / 2 - this.translate.x/* + dx*/) / sz : 0,
-            y: this.loaded ? ((this.imageSize.height - ch) / 2 - this.translate.y/* + dy*/) / sz : 0,
+            angle: -this.rotation,
+            degrees: -this.rotation * 180 / Math.PI,
+            x: this.loaded ? ((this.envelopeSize.width - cw) / 2 - this.translate.x/* + dx*/) / sz : 0,
+            y: this.loaded ? ((this.envelopeSize.height - ch) / 2 - this.translate.y/* + dy*/) / sz : 0,
             w: this.loaded ? cw / sz : 0,
             h: this.loaded ? ch / sz : 0,
         };
+    },
 
-        return r;
+    _clamp(value, min, max)    {
+        return Math.min(Math.max(min, value), max);
+    },
+
+    _rotatePoint(p) {
+        return {
+            x: p.x * this.rotCos + p.y * this.rotSin,
+            y: - p.x * this.rotSin + p.y * this.rotCos
+        };
+    },
+
+    _counterRotatePoint(p) {
+        return {
+            x: p.x * this.rotCos - p.y * this.rotSin,
+            y: p.x * this.rotSin + p.y * this.rotCos
+        };
     }
 }
 
 
-window.cropper = function(translations = {}, options = {}, selector = '[type=file]')   {
-    return [...document.querySelectorAll(selector)].map(v => new Cropper(v, translations, options));
-}
+window.cropper = (translations = {}, options = {}, selector = '[type=file]') =>
+    [...document.querySelectorAll(selector)].map(v => new Cropper(v, translations, options));
