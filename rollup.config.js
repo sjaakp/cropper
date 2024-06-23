@@ -11,7 +11,7 @@ const date = new Date().toDateString();
 
 const banner = `
 /*!
- * ${widgetName} 2.1.0
+ * ${widgetName} 2.1.1
  * (c) ${year} sjaakpriester.nl
  */
 `;

@@ -109,6 +109,10 @@
     cursor: pointer;
     overflow: hidden;
 
+    &:disabled {
+        --c: var(--g);
+    }
+
     &:active,
     &:focus-visible {
         --b: var(--s);

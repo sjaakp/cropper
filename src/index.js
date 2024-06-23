@@ -1,5 +1,5 @@
 import './index.css';
-const version = 'v2.1.0 2024-06-12';
+const version = 'v2.1.1 2024-06-16';
 
 function Cropper(elmt, translations = {}, options = {}) {
     this.settings = Object.assign({}, this.defaults, options, elmt.dataset);
@@ -83,6 +83,7 @@ function Cropper(elmt, translations = {}, options = {}) {
     this.rotCos = 1; //. always >=0 (assuming rotation is between - pi/2 and pi/2)
     this.rotScale = 1; // extra scale resulting from rotation, always >= 1
 
+    this.enabled = true;
     this.dragging = -1;
     this.loaded = false;
 
@@ -105,7 +106,7 @@ function Cropper(elmt, translations = {}, options = {}) {
     });
 
     overlay.addEventListener('pointerdown', (ev) => {
-        if (this.loaded && ev.button === 0)    {
+        if (this.loaded && this.enabled && ev.button === 0)    {
             this.wrap.classList.add('cropper-dragging');
             this.dragging = ev.pointerId;
         }
@@ -187,7 +188,7 @@ Cropper.prototype = {
         angle: 'Angle'
     },
 
-    loadImage(url) {
+    loadImage(url, bEnable = true) {
         this.wrap.classList.remove('cropper-loaded');
 
         if (!url) {
@@ -198,6 +199,7 @@ Cropper.prototype = {
             this._resetAll();
             this.msg.innerText = '';
             this.imageAsp = 1;
+            this.enable(bEnable);
             this._update();
 
             return; // empty
@@ -206,8 +208,12 @@ Cropper.prototype = {
         fetch(url)
             .then(res => res.blob())
             .then(blob => {
-                const type = blob.type,
-                    name = url.replace(/^.*[\\\/]/, '');
+                const name = url.replace(/^.*[\\\/]/, '');
+                let type = blob.type;
+
+                // Not all web servers serve .avif with the right MIME-type
+                // https://shortpixel.com/blog/avif-mime-type-delivery-apache-nginx/
+                if (name.endsWith('.avif')) type = 'image/avif';
 
                 const file = new File([blob], name, {
                     type: type,
@@ -216,13 +222,13 @@ Cropper.prototype = {
                 const dt = new DataTransfer(); // https://stackoverflow.com/questions/5632629/how-to-change-a-file-inputs-filelist-programmatically
                 dt.items.add(file);
                 this.element.files = dt.files;
-                this._loadFile();
+                this._loadFile(bEnable);
             })
     },
 
-    _loadFile() {
+    _loadFile(bEnable = true) {
         const file = this.element.files[0];
-        if (file.type.match(/image.*/))  {
+        if (file.type.startsWith('image/'))  {
             const reader = new FileReader();
             reader.addEventListener('load', (ev) => {
                 this.loaded = false;
@@ -237,6 +243,7 @@ Cropper.prototype = {
                     this.imageAsp = this.image.naturalWidth / this.image.naturalHeight;
                     this._resetAll();
                     this._calcImgSize();
+                    this.enable(bEnable);
                     this._update();
                 });
 
@@ -396,6 +403,17 @@ Cropper.prototype = {
         this.zoomCtrl.setAttribute('max', lnMz.toString());
     },
 
+    enable(b = ! this.enabled) {
+        this.enabled = b;
+        if (b)  {
+            this.zoomCtrl.removeAttribute('disabled');
+            this.rotCtrl.removeAttribute('disabled');
+        } else {
+            this.zoomCtrl.setAttribute('disabled', '');
+            this.rotCtrl.setAttribute('disabled', '');
+        }
+    },
+
     _update() {
         const cw = this.overlay.clientWidth / 2,
             ch = this.overlay.clientHeight / 2,
@@ -492,4 +510,4 @@ Cropper.prototype = {
 
 
 window.cropper = (translations = {}, options = {}, selector = '[type=file]') =>
-    [...document.querySelectorAll(selector)].map(v => new Cropper(v, translations, options));
+    [...document.querySelectorAll(selector)].map(v => v.cropper ?? new Cropper(v, translations, options));

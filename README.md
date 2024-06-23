@@ -182,6 +182,8 @@ or one of the following strings:
  - **'wide'** equivalent to 1.718, 16:9
  - **'cinema'** equivalent to 2.333, 21:9
 
+There exist lots and lots of other [aspect ratios](https://en.wikipedia.org/wiki/Aspect_ratio_(image) "Wikipedia")
+
 #### data-margin ####
 
 The width of **Cropper 2.1**'s area margin, in pixels. Default is 40.
